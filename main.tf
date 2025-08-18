@@ -9,6 +9,10 @@ data "cloudinit_config" "server" {
   part {
     content_type = "text/cloud-config"
     content = templatefile("${path.module}/scripts/cloud-init.yaml", {
+      DOMAIN                    = var.domain
+      PROJECT_NAME              = var.project_name
+      ENVIRONMENT               = var.environment
+      TECHNITIUM_ADMIN_PASSWORD = var.technitium_admin_password
       domain                    = var.domain
       project_name              = var.project_name
       environment               = var.environment

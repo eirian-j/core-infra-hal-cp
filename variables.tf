@@ -99,7 +99,7 @@ variable "cloudflare_api_token" {
 }
 
 variable "cloudflare_zone_id" {
-  description = "Cloudflare zone ID"
+  description = "CloudFlare Zone ID for the domain"
   type        = string
   default     = ""
 }

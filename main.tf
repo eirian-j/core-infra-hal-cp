@@ -48,31 +48,45 @@ module "compute" {
 
 module "dns" {
   source = "git::https://github.com/eirian-j/DNSaC.git//modules/project-dns?ref=main"
-  count  = var.cloudflare_api_token != "" ? 1 : 0
+  count  = var.cloudflare_api_token != "" && var.cloudflare_zone_id != "" ? 1 : 0
 
   providers = {
     cloudflare = cloudflare
   }
 
-  project_name = var.project_name
-  environment  = var.environment
-  domain       = var.domain
+  zone_id = var.cloudflare_zone_id
+  domain  = var.domain
+  project = "hal"  # Must be one of: monika, jarvis, hal
 
-  dns_records = {
-    "${var.project_name}" = {
-      type  = "A"
-      value = module.compute.public_ip
-      ttl   = 300
+  services = {
+    "control" = {
+      environments = {
+        "${var.environment}" = {
+          a_records = [
+            {
+              ip_address = module.compute.public_ip
+              ttl        = 300
+              comment    = "HAL Control Plane - ${var.environment}"
+            }
+          ]
+          cname_target  = "control-${var.environment}.hal.${var.domain}"
+          cname_ttl     = 300
+          cname_comment = "Wildcard for HAL control services"
+        }
+      }
     }
-    "dns-${var.project_name}" = {
-      type  = "A"
-      value = module.compute.public_ip
-      ttl   = 300
-    }
-    "*.${var.project_name}" = {
-      type  = "CNAME"
-      value = "${var.project_name}.${var.domain}"
-      ttl   = 300
+    "dns" = {
+      environments = {
+        "${var.environment}" = {
+          a_records = [
+            {
+              ip_address = module.compute.public_ip
+              ttl        = 300
+              comment    = "Technitium DNS Server - ${var.environment}"
+            }
+          ]
+        }
+      }
     }
   }
 }

@@ -119,25 +119,25 @@ write_files:
       MOUNT_POINT="/data"
 
       echo "Waiting for data volume to attach..."
-      while [ ! -e ${DEVICE} ]; do
+      while [ ! -e $${DEVICE} ]; do
         sleep 2
       done
 
-      if ! blkid ${DEVICE}; then
+      if ! blkid $${DEVICE}; then
         echo "Formatting data volume..."
-        mkfs.ext4 ${DEVICE}
+        mkfs.ext4 $${DEVICE}
       fi
 
-      mkdir -p ${MOUNT_POINT}
+      mkdir -p $${MOUNT_POINT}
       
-      if ! grep -q "${DEVICE}" /etc/fstab; then
-        echo "${DEVICE} ${MOUNT_POINT} ext4 defaults,noatime,nodiratime 0 2" >> /etc/fstab
+      if ! grep -q "$${DEVICE}" /etc/fstab; then
+        echo "$${DEVICE} $${MOUNT_POINT} ext4 defaults,noatime,nodiratime 0 2" >> /etc/fstab
       fi
 
-      mount ${MOUNT_POINT}
+      mount $${MOUNT_POINT}
 
-      mkdir -p ${MOUNT_POINT}/{technitium/config,technitium/logs,ofelia/config,ofelia/logs,backups}
-      chown -R ubuntu:ubuntu ${MOUNT_POINT}
+      mkdir -p $${MOUNT_POINT}/{technitium/config,technitium/logs,ofelia/config,ofelia/logs,backups}
+      chown -R ubuntu:ubuntu $${MOUNT_POINT}
 
   - path: /home/ubuntu/.env
     content: |

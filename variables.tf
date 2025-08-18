@@ -4,6 +4,30 @@ variable "region" {
   default     = "ap-singapore-1"
 }
 
+variable "tenancy_ocid" {
+  description = "OCI tenancy OCID"
+  type        = string
+  sensitive   = true
+}
+
+variable "user_ocid" {
+  description = "OCI user OCID"
+  type        = string
+  sensitive   = true
+}
+
+variable "fingerprint" {
+  description = "OCI API key fingerprint"
+  type        = string
+  sensitive   = true
+}
+
+variable "private_key" {
+  description = "OCI API private key"
+  type        = string
+  sensitive   = true
+}
+
 variable "compartment_id" {
   description = "OCI compartment OCID"
   type        = string

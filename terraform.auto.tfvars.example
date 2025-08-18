@@ -1,0 +1,20 @@
+# This file is for non-sensitive default values
+# Copy to terraform.auto.tfvars and customize
+# Sensitive values should be set in Terraform Cloud as environment variables
+
+# Project Configuration
+project_name = "hal"
+environment  = "prod"
+domain       = "eirian.io"
+
+# Instance Configuration  
+instance_shape      = "VM.Standard.E2.1.Micro"
+instance_ocpus      = 1
+instance_memory_gb  = 1
+boot_volume_size_gb = 30
+data_volume_size_gb = 20
+
+# Network Configuration
+vcn_cidr            = "10.0.1.0/24"
+public_subnet_cidr  = "10.0.1.0/28"
+private_subnet_cidr = "10.0.1.16/28"

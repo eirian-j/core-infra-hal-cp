@@ -1,0 +1,180 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - software-properties-common
+  - gnupg
+  - lsb-release
+  - unzip
+  - git
+  - vim
+  - htop
+  - net-tools
+  - jq
+  - python3-pip
+
+write_files:
+  - path: /etc/docker/daemon.json
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "10m",
+          "max-file": "3"
+        },
+        "storage-driver": "overlay2"
+      }
+
+  - path: /home/ubuntu/docker-compose.yml
+    content: |
+      version: '3.8'
+
+      services:
+        ofelia:
+          image: mcuadros/ofelia:latest
+          container_name: ofelia
+          restart: unless-stopped
+          volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            - ./ofelia/config:/etc/ofelia
+            - ./ofelia/logs:/var/log/ofelia
+          command: daemon --config=/etc/ofelia/config.ini
+          networks:
+            - hal-network
+
+        technitium:
+          image: technitium/dns-server:latest
+          container_name: technitium
+          hostname: dns-server
+          restart: unless-stopped
+          ports:
+            - "53:53/tcp"
+            - "53:53/udp"
+            - "5380:5380/tcp"
+            - "67:67/udp"
+          environment:
+            - DNS_SERVER_DOMAIN=dns.${DOMAIN}
+            - DNS_SERVER_ADMIN_PASSWORD=${TECHNITIUM_ADMIN_PASSWORD}
+            - DNS_SERVER_PREFER_IPV6=false
+            - DNS_SERVER_WEB_SERVICE_HTTP_PORT=5380
+            - DNS_SERVER_RECURSION=Allow
+            - DNS_SERVER_ENABLE_BLOCKING=false
+            - DNS_SERVER_FORWARDERS=1.1.1.1,8.8.8.8
+          volumes:
+            - technitium-config:/etc/dns
+            - technitium-logs:/var/log
+          networks:
+            - hal-network
+
+      networks:
+        hal-network:
+          driver: bridge
+
+      volumes:
+        technitium-config:
+          driver: local
+          driver_opts:
+            type: none
+            o: bind
+            device: /data/technitium/config
+        technitium-logs:
+          driver: local
+          driver_opts:
+            type: none
+            o: bind
+            device: /data/technitium/logs
+
+  - path: /home/ubuntu/ofelia/config/config.ini
+    content: |
+      [global]
+      save-folder = /var/log/ofelia
+      save-only-on-error = false
+
+      [job-exec "system-update"]
+      schedule = @weekly
+      container = ofelia
+      command = sh -c "apt-get update && apt-get upgrade -y"
+
+      [job-exec "docker-cleanup"]
+      schedule = @daily
+      container = ofelia
+      command = sh -c "docker system prune -af --volumes"
+
+      [job-exec "backup-configs"]
+      schedule = @daily
+      container = ofelia
+      command = sh -c "tar -czf /data/backups/config-$(date +%Y%m%d).tar.gz /data/technitium/config"
+
+  - path: /home/ubuntu/setup-data-volume.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+
+      DEVICE="/dev/oracleoci/oraclevdb"
+      MOUNT_POINT="/data"
+
+      echo "Waiting for data volume to attach..."
+      while [ ! -e ${DEVICE} ]; do
+        sleep 2
+      done
+
+      if ! blkid ${DEVICE}; then
+        echo "Formatting data volume..."
+        mkfs.ext4 ${DEVICE}
+      fi
+
+      mkdir -p ${MOUNT_POINT}
+      
+      if ! grep -q "${DEVICE}" /etc/fstab; then
+        echo "${DEVICE} ${MOUNT_POINT} ext4 defaults,noatime,nodiratime 0 2" >> /etc/fstab
+      fi
+
+      mount ${MOUNT_POINT}
+
+      mkdir -p ${MOUNT_POINT}/{technitium/config,technitium/logs,ofelia/config,ofelia/logs,backups}
+      chown -R ubuntu:ubuntu ${MOUNT_POINT}
+
+  - path: /home/ubuntu/.env
+    content: |
+      DOMAIN=${domain}
+      TECHNITIUM_ADMIN_PASSWORD=${technitium_admin_password}
+      PROJECT_NAME=${project_name}
+      ENVIRONMENT=${environment}
+
+runcmd:
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+  - add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  - usermod -aG docker ubuntu
+  - systemctl enable docker
+  - systemctl start docker
+  
+  - curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
+  - apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+  - apt-get update
+  - apt-get install -y terraform vault
+  
+  - wget -O- https://raw.githubusercontent.com/ansible/ansible/stable-2.16/packaging/debian/ubuntu/ansible.list | tee /etc/apt/sources.list.d/ansible.list
+  - apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 93C4A3FD7BB9C367
+  - apt-get update
+  - apt-get install -y ansible
+  
+  - wget -O /tmp/oci-cli.zip https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh
+  - bash /tmp/oci-cli.zip --accept-all-defaults --exec-dir /usr/local/bin --install-dir /usr/local/lib/oracle-cli
+  
+  - /home/ubuntu/setup-data-volume.sh
+  
+  - cp /home/ubuntu/ofelia/config/config.ini /data/ofelia/config/config.ini
+  
+  - cd /home/ubuntu && docker compose up -d
+  
+  - echo "HAL Control Plane setup complete" > /home/ubuntu/setup-complete.txt
+  - date >> /home/ubuntu/setup-complete.txt
+
+final_message: "HAL Control Plane is ready after $UPTIME seconds"

@@ -24,6 +24,10 @@ data "cloudinit_config" "server" {
 module "networking" {
   source = "./modules/networking"
 
+  providers = {
+    oci = oci
+  }
+
   compartment_id      = var.compartment_id
   project_name        = var.project_name
   environment         = var.environment
@@ -34,6 +38,10 @@ module "networking" {
 
 module "compute" {
   source = "./modules/compute"
+
+  providers = {
+    oci = oci
+  }
 
   compartment_id      = var.compartment_id
   availability_domain = var.availability_domain

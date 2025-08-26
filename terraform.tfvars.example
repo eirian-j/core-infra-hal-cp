@@ -4,7 +4,7 @@ user_ocid           = "ocid1.user.oc1..aaaaaaaa..."
 fingerprint         = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
 private_key         = "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
 compartment_id      = "ocid1.compartment.oc1..aaaaaaaa..."
-availability_domain = "AD-1"
+availability_domain_number = 0  # 0 for AD-1, 1 for AD-2, 2 for AD-3
 ssh_public_key      = "ssh-rsa AAAAB3NzaC1yc2..."
 
 # Project Configuration

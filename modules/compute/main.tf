@@ -32,11 +32,12 @@ resource "oci_core_instance" "main" {
     display_name              = "${var.project_name}-${var.environment}-vnic"
     assign_public_ip          = true
     skip_source_dest_check    = false
+    hostname_label            = "${var.project_name}-${var.environment}"
   }
 
   metadata = {
     ssh_authorized_keys = var.ssh_public_key
-    user_data           = var.user_data
+    # Remove user_data temporarily to isolate the issue
   }
 
   freeform_tags = local.common_tags

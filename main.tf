@@ -44,7 +44,8 @@ module "compute" {
   }
 
   compartment_id      = var.compartment_id
-  availability_domain = var.availability_domain
+  # Use the actual AD name from data source
+  availability_domain = data.oci_identity_availability_domains.ads.availability_domains[var.availability_domain_number].name
   project_name        = var.project_name
   environment         = var.environment
   subnet_id           = module.networking.public_subnet_id

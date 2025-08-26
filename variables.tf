@@ -51,9 +51,10 @@ variable "domain" {
   default     = "eirian.io"
 }
 
-variable "availability_domain" {
-  description = "Availability domain for resources"
-  type        = string
+variable "availability_domain_number" {
+  description = "Availability domain number (0-based index: 0, 1, or 2)"
+  type        = number
+  default     = 0
 }
 
 variable "ssh_public_key" {

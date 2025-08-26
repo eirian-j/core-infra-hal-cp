@@ -45,6 +45,27 @@ resource "oci_core_instance" "main" {
     user_data           = var.user_data
   }
 
+  agent_config {
+    is_monitoring_disabled  = false
+    is_management_disabled  = false
+    are_all_plugins_disabled = false
+    
+    plugins_config {
+      name          = "Vulnerability Scanning"
+      desired_state = "DISABLED"
+    }
+    
+    plugins_config {
+      name          = "Compute Instance Monitoring"
+      desired_state = "ENABLED"
+    }
+    
+    plugins_config {
+      name          = "Bastion"
+      desired_state = "DISABLED"
+    }
+  }
+
   freeform_tags = local.common_tags
 
   lifecycle {
@@ -57,6 +78,7 @@ resource "oci_core_volume" "data" {
   availability_domain = var.availability_domain
   display_name        = "${var.project_name}-${var.environment}-data"
   size_in_gbs         = var.data_volume_size_gb
+  vpus_per_gb         = 10  # 10 VPUs per GB for balanced performance
 
   freeform_tags = local.common_tags
 }
@@ -90,24 +112,17 @@ data "oci_core_private_ips" "main" {
   vnic_id = data.oci_core_vnic.main.id
 }
 
-resource "null_resource" "assign_reserved_ip" {
-  triggers = {
-    instance_id = oci_core_instance.main.id
-  }
+# Use Terraform native resource instead of OCI CLI
+resource "oci_core_public_ip" "assigned" {
+  compartment_id = var.compartment_id
+  display_name   = "${var.project_name}-${var.environment}-assigned-ip"
+  lifetime       = "EPHEMERAL"
+  private_ip_id  = data.oci_core_private_ips.main.private_ips[0].id
 
-  provisioner "local-exec" {
-    command = <<-EOT
-      oci network public-ip update \
-        --public-ip-id ${oci_core_public_ip.reserved.id} \
-        --private-ip-id ${data.oci_core_private_ips.main.private_ips[0].id} \
-        --wait-for-state ASSIGNED \
-        --wait-for-state AVAILABLE
-    EOT
-  }
-
+  freeform_tags = local.common_tags
+  
   depends_on = [
     oci_core_instance.main,
-    oci_core_public_ip.reserved,
     data.oci_core_private_ips.main
   ]
 }

@@ -26,7 +26,10 @@
 |----------|------|-------------|---------|
 | `availability_domain_number` | number | AD index (0=AD-1, 1=AD-2, 2=AD-3) | 0 |
 | `technitium_admin_password` | string | Technitium DNS admin password | (set your own) |
-| `data_volume_size_gb` | number | Data volume size (min 50 GB) | 50 |
+
+**Note**: Remove these variables from Terraform Cloud if they exist:
+- `availability_domain` (replaced by `availability_domain_number`)
+- `data_volume_size_gb` (no longer used - single boot volume only)
 
 ### Optional Variables
 

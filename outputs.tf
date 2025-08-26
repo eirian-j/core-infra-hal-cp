@@ -43,11 +43,6 @@ output "private_subnet_id" {
   value       = module.networking.private_subnet_id
 }
 
-output "data_volume_id" {
-  description = "Data volume OCID"
-  value       = module.compute.data_volume_id
-}
-
 output "project_info" {
   description = "Project information"
   value = {

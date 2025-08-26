@@ -3,6 +3,8 @@ locals {
     Project     = var.project_name
     Environment = var.environment
     ManagedBy   = "terraform"
+    AlwaysFree  = "true"
+    Purpose     = "HAL-ControlPlane"
   }
 }
 

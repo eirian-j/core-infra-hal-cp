@@ -13,6 +13,9 @@ data "cloudinit_config" "server" {
       PROJECT_NAME              = var.project_name
       ENVIRONMENT               = var.environment
       TECHNITIUM_ADMIN_PASSWORD = var.technitium_admin_password
+      GRAFANA_LOKI_URL          = var.grafana_loki_url
+      GRAFANA_LOKI_USERNAME     = var.grafana_loki_username
+      GRAFANA_LOKI_PASSWORD     = var.grafana_loki_password
       domain                    = var.domain
       project_name              = var.project_name
       environment               = var.environment
@@ -54,7 +57,6 @@ module "compute" {
   instance_ocpus      = var.instance_ocpus
   instance_memory_gb  = var.instance_memory_gb
   boot_volume_size_gb = var.boot_volume_size_gb
-  data_volume_size_gb = var.data_volume_size_gb
   user_data           = data.cloudinit_config.server.rendered
   assign_public_ip    = false
 }

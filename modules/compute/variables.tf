@@ -48,11 +48,6 @@ variable "boot_volume_size_gb" {
   type        = number
 }
 
-variable "data_volume_size_gb" {
-  description = "Data volume size in GB"
-  type        = number
-}
-
 variable "user_data" {
   description = "Cloud-init user data"
   type        = string

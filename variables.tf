@@ -81,15 +81,9 @@ variable "instance_memory_gb" {
 }
 
 variable "boot_volume_size_gb" {
-  description = "Boot volume size in GB"
+  description = "Boot volume size in GB (includes data storage)"
   type        = number
-  default     = 30
-}
-
-variable "data_volume_size_gb" {
-  description = "Data volume size in GB"
-  type        = number
-  default     = 20
+  default     = 50
 }
 
 variable "vcn_cidr" {
@@ -126,5 +120,24 @@ variable "cloudflare_api_token" {
 variable "cloudflare_zone_id" {
   description = "CloudFlare Zone ID for the domain"
   type        = string
+  default     = ""
+}
+
+variable "grafana_loki_url" {
+  description = "Grafana Cloud Loki URL (e.g., https://logs-prod-us-central1.grafana.net/loki/api/v1/push)"
+  type        = string
+  default     = ""
+}
+
+variable "grafana_loki_username" {
+  description = "Grafana Cloud Loki username (numeric ID)"
+  type        = string
+  default     = ""
+}
+
+variable "grafana_loki_password" {
+  description = "Grafana Cloud API key for Loki"
+  type        = string
+  sensitive   = true
   default     = ""
 }

@@ -47,22 +47,7 @@ resource "oci_core_instance" "main" {
   }
 }
 
-resource "oci_core_volume" "data" {
-  compartment_id      = var.compartment_id
-  availability_domain = var.availability_domain
-  display_name        = "${var.project_name}-${var.environment}-data"
-  size_in_gbs         = var.data_volume_size_gb
-
-  freeform_tags = local.common_tags
-}
-
-resource "oci_core_volume_attachment" "data" {
-  attachment_type = "paravirtualized"
-  instance_id     = oci_core_instance.main.id
-  volume_id       = oci_core_volume.data.id
-  display_name    = "${var.project_name}-${var.environment}-data-attachment"
-  device          = "/dev/oracleoci/oraclevdb"
-}
+# Data volume removed - using single 50GB boot volume instead
 
 resource "oci_core_public_ip" "reserved" {
   compartment_id = var.compartment_id

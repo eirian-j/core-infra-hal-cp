@@ -18,10 +18,6 @@ output "reserved_public_ip_id" {
   value       = oci_core_public_ip.reserved.id
 }
 
-output "data_volume_id" {
-  description = "Data volume OCID"
-  value       = oci_core_volume.data.id
-}
 
 output "instance_name" {
   description = "Instance display name"

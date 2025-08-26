@@ -18,6 +18,60 @@ packages:
   - python3-pip
 
 write_files:
+  - path: /etc/promtail/config.yml
+    content: |
+      server:
+        http_listen_port: 9080
+        grpc_listen_port: 0
+      
+      positions:
+        filename: /tmp/positions.yaml
+      
+      clients:
+        - url: ${GRAFANA_LOKI_URL}
+          basic_auth:
+            username: ${GRAFANA_LOKI_USERNAME}
+            password: ${GRAFANA_LOKI_PASSWORD}
+      
+      scrape_configs:
+        - job_name: system
+          static_configs:
+            - targets:
+                - localhost
+              labels:
+                job: varlogs
+                host: ${PROJECT_NAME}-${ENVIRONMENT}
+                __path__: /var/log/*.log
+        
+        - job_name: docker
+          static_configs:
+            - targets:
+                - localhost
+              labels:
+                job: docker
+                host: ${PROJECT_NAME}-${ENVIRONMENT}
+                __path__: /var/lib/docker/containers/*/*.log
+        
+        - job_name: technitium
+          static_configs:
+            - targets:
+                - localhost
+              labels:
+                job: technitium-dns
+                host: ${PROJECT_NAME}-${ENVIRONMENT}
+                __path__: /opt/data/technitium/logs/*.log
+        
+        - job_name: journal
+          journal:
+            json: false
+            max_age: 12h
+            labels:
+              job: systemd-journal
+              host: ${PROJECT_NAME}-${ENVIRONMENT}
+          relabel_configs:
+            - source_labels: ['__journal__systemd_unit']
+              target_label: 'unit'
+
   - path: /etc/docker/daemon.json
     content: |
       {
@@ -80,13 +134,13 @@ write_files:
           driver_opts:
             type: none
             o: bind
-            device: /data/technitium/config
+            device: /opt/data/technitium/config
         technitium-logs:
           driver: local
           driver_opts:
             type: none
             o: bind
-            device: /data/technitium/logs
+            device: /opt/data/technitium/logs
 
   - path: /home/ubuntu/ofelia/config/config.ini
     content: |
@@ -107,37 +161,22 @@ write_files:
       [job-exec "backup-configs"]
       schedule = @daily
       container = ofelia
-      command = sh -c "tar -czf /data/backups/config-$(date +%Y%m%d).tar.gz /data/technitium/config"
+      command = sh -c "tar -czf /opt/data/backups/config-$(date +%Y%m%d).tar.gz /opt/data/technitium/config"
 
-  - path: /home/ubuntu/setup-data-volume.sh
+  - path: /home/ubuntu/setup-data-dirs.sh
     permissions: '0755'
     content: |
       #!/bin/bash
       set -e
 
-      DEVICE="/dev/oracleoci/oraclevdb"
-      MOUNT_POINT="/data"
+      # Use local disk for data storage (single 50GB volume)
+      DATA_DIR="/opt/data"
 
-      echo "Waiting for data volume to attach..."
-      while [ ! -e $${DEVICE} ]; do
-        sleep 2
-      done
-
-      if ! blkid $${DEVICE}; then
-        echo "Formatting data volume..."
-        mkfs.ext4 $${DEVICE}
-      fi
-
-      mkdir -p $${MOUNT_POINT}
+      echo "Setting up data directories..."
+      mkdir -p $${DATA_DIR}/{technitium/config,technitium/logs,ofelia/config,ofelia/logs,backups}
+      chown -R ubuntu:ubuntu $${DATA_DIR}
       
-      if ! grep -q "$${DEVICE}" /etc/fstab; then
-        echo "$${DEVICE} $${MOUNT_POINT} ext4 defaults,noatime,nodiratime 0 2" >> /etc/fstab
-      fi
-
-      mount $${MOUNT_POINT}
-
-      mkdir -p $${MOUNT_POINT}/{technitium/config,technitium/logs,ofelia/config,ofelia/logs,backups}
-      chown -R ubuntu:ubuntu $${MOUNT_POINT}
+      echo "Data directories created at $${DATA_DIR}"
 
   - path: /home/ubuntu/.env
     content: |
@@ -147,6 +186,37 @@ write_files:
       ENVIRONMENT=${environment}
 
 runcmd:
+  # Install Promtail for log shipping to Grafana Cloud
+  - mkdir -p /etc/promtail
+  - curl -s https://api.github.com/repos/grafana/loki/releases/latest | grep browser_download_url | grep promtail-linux-amd64.zip | cut -d '"' -f 4 | wget -qi -
+  - unzip promtail-linux-amd64.zip
+  - mv promtail-linux-amd64 /usr/local/bin/promtail
+  - chmod +x /usr/local/bin/promtail
+  - rm promtail-linux-amd64.zip
+  
+  # Create systemd service for Promtail
+  - |
+    cat > /etc/systemd/system/promtail.service <<EOF
+    [Unit]
+    Description=Promtail service
+    After=network.target
+    
+    [Service]
+    Type=simple
+    User=root
+    ExecStart=/usr/local/bin/promtail -config.file=/etc/promtail/config.yml
+    Restart=always
+    RestartSec=10
+    
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+  
+  - systemctl daemon-reload
+  - systemctl enable promtail
+  - systemctl start promtail
+  
+  # Docker installation
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
   - add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
   - apt-get update
@@ -168,9 +238,9 @@ runcmd:
   - wget -O /tmp/oci-cli.zip https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh
   - bash /tmp/oci-cli.zip --accept-all-defaults --exec-dir /usr/local/bin --install-dir /usr/local/lib/oracle-cli
   
-  - /home/ubuntu/setup-data-volume.sh
+  - /home/ubuntu/setup-data-dirs.sh
   
-  - cp /home/ubuntu/ofelia/config/config.ini /data/ofelia/config/config.ini
+  - cp /home/ubuntu/ofelia/config/config.ini /opt/data/ofelia/config/config.ini
   
   - cd /home/ubuntu && docker compose up -d
   

@@ -16,8 +16,7 @@ domain       = "eirian.io"
 instance_shape      = "VM.Standard.E2.1.Micro"
 instance_ocpus      = 1
 instance_memory_gb  = 1
-boot_volume_size_gb = 30
-data_volume_size_gb = 20
+boot_volume_size_gb = 50  # Single 50GB volume for OS and data
 
 # Network Configuration
 vcn_cidr            = "10.0.1.0/24"

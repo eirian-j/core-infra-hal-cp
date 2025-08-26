@@ -10,17 +10,12 @@ output "private_ip" {
 
 output "public_ip" {
   description = "Instance public IP"
-  value       = oci_core_public_ip.assigned.ip_address
+  value       = oci_core_instance.main.public_ip
 }
 
 output "reserved_public_ip_id" {
   description = "Reserved public IP OCID"
   value       = oci_core_public_ip.reserved.id
-}
-
-output "assigned_public_ip_id" {
-  description = "Assigned public IP OCID"
-  value       = oci_core_public_ip.assigned.id
 }
 
 output "data_volume_id" {

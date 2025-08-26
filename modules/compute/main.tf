@@ -21,9 +21,13 @@ resource "oci_core_instance" "main" {
   display_name        = "${var.project_name}-${var.environment}-control"
   shape               = var.instance_shape
 
-  shape_config {
-    ocpus         = var.instance_ocpus
-    memory_in_gbs = var.instance_memory_gb
+  # Only include shape_config for flexible shapes
+  dynamic "shape_config" {
+    for_each = can(regex("^VM.Standard.(A1|E3|E4|E5)", var.instance_shape)) ? [1] : []
+    content {
+      ocpus         = var.instance_ocpus
+      memory_in_gbs = var.instance_memory_gb
+    }
   }
 
   source_details {
@@ -35,7 +39,7 @@ resource "oci_core_instance" "main" {
   create_vnic_details {
     subnet_id                 = var.subnet_id
     display_name              = "${var.project_name}-${var.environment}-vnic"
-    assign_public_ip          = var.assign_public_ip
+    assign_public_ip          = true  # Temporarily assign public IP
     assign_ipv6ip             = var.assign_ipv6
     skip_source_dest_check    = false
   }
@@ -112,17 +116,3 @@ data "oci_core_private_ips" "main" {
   vnic_id = data.oci_core_vnic.main.id
 }
 
-# Use Terraform native resource instead of OCI CLI
-resource "oci_core_public_ip" "assigned" {
-  compartment_id = var.compartment_id
-  display_name   = "${var.project_name}-${var.environment}-assigned-ip"
-  lifetime       = "EPHEMERAL"
-  private_ip_id  = data.oci_core_private_ips.main.private_ips[0].id
-
-  freeform_tags = local.common_tags
-  
-  depends_on = [
-    oci_core_instance.main,
-    data.oci_core_private_ips.main
-  ]
-}

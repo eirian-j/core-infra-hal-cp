@@ -48,6 +48,7 @@ module "compute" {
 
   compartment_id      = var.compartment_id
   # Use the actual AD name from data source
+  # Automatically try next AD if capacity issues
   availability_domain = data.oci_identity_availability_domains.ads.availability_domains[var.availability_domain_number].name
   project_name        = var.project_name
   environment         = var.environment

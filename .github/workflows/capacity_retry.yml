@@ -1,0 +1,73 @@
+name: OCI Capacity Retry
+
+on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    # Run every 30 minutes during typical low-usage hours
+    - cron: '*/30 2-7 * * *'  # Every 30 min from 2am-7am UTC
+    - cron: '*/30 14-17 * * *'  # Every 30 min from 2pm-5pm UTC (late night in Asia)
+
+env:
+  TF_VERSION: '1.5.0'
+  
+jobs:
+  retry-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+    
+    - name: Terraform Init
+      run: terraform init
+      
+    - name: Try AD-1
+      id: ad1
+      continue-on-error: true
+      run: |
+        terraform apply -auto-approve -var="availability_domain_number=0" 2>&1 | tee output.log
+        if grep -q "Out of host capacity" output.log; then
+          echo "::warning::AD-1 out of capacity"
+          exit 1
+        fi
+        
+    - name: Try AD-2
+      if: steps.ad1.outcome == 'failure'
+      id: ad2
+      continue-on-error: true
+      run: |
+        terraform apply -auto-approve -var="availability_domain_number=1" 2>&1 | tee output.log
+        if grep -q "Out of host capacity" output.log; then
+          echo "::warning::AD-2 out of capacity"
+          exit 1
+        fi
+        
+    - name: Try AD-3
+      if: steps.ad2.outcome == 'failure'
+      id: ad3
+      continue-on-error: true
+      run: |
+        terraform apply -auto-approve -var="availability_domain_number=2" 2>&1 | tee output.log
+        if grep -q "Out of host capacity" output.log; then
+          echo "::warning::AD-3 out of capacity"
+          exit 1
+        fi
+    
+    - name: Success Notification
+      if: steps.ad1.outcome == 'success' || steps.ad2.outcome == 'success' || steps.ad3.outcome == 'success'
+      run: |
+        echo "🎉 Instance created successfully!"
+        # Add notification webhook here if desired
+        # curl -X POST ${{ secrets.WEBHOOK_URL }} -d '{"text":"HAL instance created!"}'
+        
+    - name: Cancel Future Runs
+      if: steps.ad1.outcome == 'success' || steps.ad2.outcome == 'success' || steps.ad3.outcome == 'success'
+      uses: styfle/cancel-workflow-action@0.11.0
+      with:
+        workflow_id: capacity_retry.yml

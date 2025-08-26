@@ -21,15 +21,6 @@ resource "oci_core_instance" "main" {
   display_name        = "${var.project_name}-${var.environment}-control"
   shape               = var.instance_shape
 
-  # Only include shape_config for flexible shapes
-  dynamic "shape_config" {
-    for_each = can(regex("^VM.Standard.(A1|E3|E4|E5)", var.instance_shape)) ? [1] : []
-    content {
-      ocpus         = var.instance_ocpus
-      memory_in_gbs = var.instance_memory_gb
-    }
-  }
-
   source_details {
     source_type             = "image"
     source_id               = data.oci_core_images.ubuntu.images[0].id
@@ -39,35 +30,13 @@ resource "oci_core_instance" "main" {
   create_vnic_details {
     subnet_id                 = var.subnet_id
     display_name              = "${var.project_name}-${var.environment}-vnic"
-    assign_public_ip          = true  # Temporarily assign public IP
-    assign_ipv6ip             = var.assign_ipv6
+    assign_public_ip          = true
     skip_source_dest_check    = false
   }
 
   metadata = {
     ssh_authorized_keys = var.ssh_public_key
     user_data           = var.user_data
-  }
-
-  agent_config {
-    is_monitoring_disabled  = false
-    is_management_disabled  = false
-    are_all_plugins_disabled = false
-    
-    plugins_config {
-      name          = "Vulnerability Scanning"
-      desired_state = "DISABLED"
-    }
-    
-    plugins_config {
-      name          = "Compute Instance Monitoring"
-      desired_state = "ENABLED"
-    }
-    
-    plugins_config {
-      name          = "Bastion"
-      desired_state = "DISABLED"
-    }
   }
 
   freeform_tags = local.common_tags
@@ -82,7 +51,6 @@ resource "oci_core_volume" "data" {
   availability_domain = var.availability_domain
   display_name        = "${var.project_name}-${var.environment}-data"
   size_in_gbs         = var.data_volume_size_gb
-  vpus_per_gb         = 10  # 10 VPUs per GB for balanced performance
 
   freeform_tags = local.common_tags
 }

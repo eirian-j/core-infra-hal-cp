@@ -4,7 +4,7 @@ terraform {
   required_providers {
     oci = {
       source  = "oracle/oci"
-      version = "~> 7.14"
+      version = "~> 6.0"
     }
     cloudinit = {
       source  = "hashicorp/cloudinit"

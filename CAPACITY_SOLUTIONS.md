@@ -1,7 +1,6 @@
 # OCI E2.1.Micro Capacity Solutions
 
-## The Problem
-"Out of host capacity" errors are very common with OCI's free E2.1.Micro instances, especially in popular regions like Singapore.
+This document collects approaches for dealing with "Out of host capacity" when trying to provision OCI E2.1.Micro instances.
 
 ## Immediate Solutions
 
@@ -32,57 +31,12 @@ This will:
 - Automatically rotate through ADs
 - Stop when successful
 
-### 4. GitHub Actions Automation
-The included `.github/workflows/capacity_retry.yml` will:
-- Run automatically during off-peak hours
-- Try all 3 availability domains
-- Stop retrying once successful
-
-To enable:
-1. Add `TF_API_TOKEN` secret in GitHub (your Terraform Cloud token)
-2. Enable Actions in your repository
-3. Wait for scheduled runs or trigger manually
-
-### 5. Terraform Cloud Scheduled Runs
+### 4. Terraform Cloud Scheduled Runs
 In Terraform Cloud workspace settings:
 1. Go to Settings → Run Triggers
 2. Add Schedule
 3. Set to run every hour during off-peak times
 4. It will eventually succeed when capacity is available
-
-## Advanced Solutions
-
-### 6. Multi-Region Strategy
-If Singapore consistently fails, consider:
-```hcl
-# In variables.tf, make region configurable
-variable "region" {
-  default = "ap-singapore-1"  
-  # Alternative: "ap-mumbai-1", "ap-sydney-1"
-}
-```
-
-### 7. Webhook Notifications
-Add to retry script for alerts:
-```bash
-# Success notification
-curl -X POST https://hooks.slack.com/your-webhook \
-  -d '{"text":"✅ OCI instance created successfully!"}'
-```
-
-### 8. API-Based Monitoring
-Use OCI CLI to check capacity:
-```bash
-# Check capacity in all ADs
-for i in 1 2 3; do
-  echo "Checking AD-$i..."
-  oci compute instance launch --dry-run \
-    --availability-domain "AD-$i" \
-    --shape "VM.Standard.E2.1.Micro" \
-    --compartment-id "$COMPARTMENT_ID" \
-    2>&1 | grep -E "capacity|success"
-done
-```
 
 ## Tips from the Community
 
